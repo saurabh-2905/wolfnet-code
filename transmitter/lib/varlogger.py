@@ -50,18 +50,18 @@ class VarLogger:
 
         event_num = cls._var2int(event)
 
-        if event_num in dict_keys:
-            _vartimestamps = cls.data_dict[event_num]
+        # if event_num in dict_keys:
+        #     _vartimestamps = cls.data_dict[event_num]
 
-            ### save only 500 latest values for each variable
-            while len(_vartimestamps) >= 500: 
-                cls._catchpop = _vartimestamps.pop(0)
+        #     ### save only 500 latest values for each variable
+        #     while len(_vartimestamps) >= 500: 
+        #         cls._catchpop = _vartimestamps.pop(0)
             
-            _vartimestamps += [(log_time, val)]
-            cls.data_dict[event_num] = _vartimestamps ### format of cls.data_dict = {event_num: [(timestamp1,val), (timestamp2, val), ...]}
+        #     _vartimestamps += [(log_time, val)]
+        #     cls.data_dict[event_num] = _vartimestamps ### format of cls.data_dict = {event_num: [(timestamp1,val), (timestamp2, val), ...]}
 
-        else:
-            cls.data_dict[event_num] = [(log_time, val)]
+        # else:
+        #     cls.data_dict[event_num] = [(log_time, val)]
 
         ### log the sequence to trace file
         cls.log_seq(event_num, log_time)
@@ -69,9 +69,13 @@ class VarLogger:
         cls._write_count +=1
         #print(cls._write_count)
         ### write to flash approx every 6 secs (counting to 1000 = 12 ms)
-        if cls._write_count >= 500:
+        num_events = 5000
+        if cls._write_count >= num_events:
             cls._write_count = 0
+            start_time = utime.ticks_ms()
             cls.write_data() ### save the data to flash
+            print('write time for {}:'.format(num_events), utime.ticks_ms()-start_time)
+            cls.data = [] ### clear the data after writing to flash
                 
 
     @classmethod
@@ -119,9 +123,9 @@ class VarLogger:
     
     @classmethod
     def write_data(cls):
-        with open(cls.write_name, 'w') as fp:
-            json.dump(cls.data_dict, fp)
-            print('dict saved', cls.write_name)
+        # with open(cls.write_name, 'w') as fp:
+        #     json.dump(cls.data_dict, fp)
+        #     print('dict saved', cls.write_name)
 
         with open(cls.trace_name, 'w') as fp:
             json.dump(cls.data, fp)
@@ -130,6 +134,9 @@ class VarLogger:
         with open('varlist'+ cls.trace_name[-1], 'w') as fp: ### save the variable list for each log file
             json.dump(cls._vardict, fp)
             print('varlist saved')
+
+        cls.cur_file += 1
+        cls.trace_name = 'trace{}'.format(cls.cur_file)
 
     @classmethod
     def save(cls):
