@@ -1,0 +1,3 @@
+Test wolfnet code for var logger. Adapted the code a bit to compy with the rules/structure of the logger. 
+These changes include running the application fucntionality in spereate main function which allows to run it in seperate thread.
+Use the base thread to monitor this main thread and also log events using the logging statement.
