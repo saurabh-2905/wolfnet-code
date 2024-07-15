@@ -2,6 +2,7 @@ import utime
 import json
 import os
 import sys
+import gc
 
 class VarLogger:
     '''
@@ -17,24 +18,25 @@ class VarLogger:
     _thread_map = dict() ### to map the threads to integer numbers
     write_name, trace_name = ['log0', 'trace0']
     _vardict = dict() ### dict of variables
-
+    cur_file = 0 ### file number
+    time_to_write = 0 ### time to write to flash
     
 
     ####### thread tracking
     threads_info = dict() ### init a dictionary to store the status of each thread
 
-    ### avoid overwriting existing files by checking existing files
-    prev_file = ''
-    with open('log_check', 'rb') as f:
-        f = f.readline()
-        prev_file = f
+    # ### avoid overwriting existing files by checking existing files
+    # prev_file = ''
+    # with open('log_check', 'rb') as f:
+    #     f = f.readline()
+    #     prev_file = f
 
-    if prev_file != '':
-        cur_file = int(prev_file)+1
-        write_name = 'log{}'.format(cur_file)
-        trace_name = 'trace{}'.format(cur_file)
-        with open('log_check', 'wb') as f:
-            f.write(str(cur_file))
+    # if prev_file != '':
+    #     cur_file = int(prev_file)+1
+    #     write_name = 'log{}'.format(cur_file)
+    #     trace_name = 'trace{}'.format(cur_file)
+    #     with open('log_check', 'wb') as f:
+    #         f.write(str(cur_file))
 
     @classmethod
     def log(cls, var='0', fun='0', clas='0', th='0', val=None):
@@ -46,7 +48,7 @@ class VarLogger:
         th = cls.map_thread(th)
         ### make the event name based on the scope
         event = '{}-{}-{}-{}'.format(th, clas, fun, var)
-        log_time = utime.ticks_ms() - cls.created_timestamp
+        log_time = utime.ticks_ms() - cls.created_timestamp - cls.time_to_write
 
         event_num = cls._var2int(event)
 
@@ -69,13 +71,15 @@ class VarLogger:
         cls._write_count +=1
         #print(cls._write_count)
         ### write to flash approx every 6 secs (counting to 1000 = 12 ms)
-        num_events = 5000
+        num_events = 1000
         if cls._write_count >= num_events:
             cls._write_count = 0
             start_time = utime.ticks_ms()
             cls.write_data() ### save the data to flash
-            print('write time for {}:'.format(num_events), utime.ticks_ms()-start_time)
+            cls.time_to_write += utime.ticks_ms()-start_time
+            print('write time for {}:'.format(num_events), cls.time_to_write)
             cls.data = [] ### clear the data after writing to flash
+            gc.collect()
                 
 
     @classmethod
@@ -131,9 +135,9 @@ class VarLogger:
             json.dump(cls.data, fp)
             print('trace saved', cls.trace_name)
 
-        with open('varlist'+ cls.trace_name[-1], 'w') as fp: ### save the variable list for each log file
+        with open('varlist'+ cls.trace_name[5:], 'w') as fp: ### save the variable list for each log file
             json.dump(cls._vardict, fp)
-            print('varlist saved')
+            print('varlist saved', cls.trace_name[5:])
 
         cls.cur_file += 1
         cls.trace_name = 'trace{}'.format(cls.cur_file)
